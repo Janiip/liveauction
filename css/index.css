@@ -1,0 +1,208 @@
+/* =========================================================
+   LiveAuction — index.css (Login)
+   ========================================================= */
+
+:root {
+  --navy: #141c2e;
+  --navy-soft: #1c2740;
+  --gold: #c9973f;
+  --text-light: #e8ebf1;
+  --text-muted: #97a1b7;
+  --border-gray: #d9dce2;
+  --text-dark: #1c2333;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  background: #f1efe9;
+  color: var(--text-dark);
+}
+
+.login-wrapper {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ---------- Panel izquierdo (branding) ---------- */
+.panel-brand {
+  flex: 1 1 50%;
+  background: var(--navy);
+  color: var(--text-light);
+  padding: 64px 56px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.brand-logo {
+  width: 56px;
+  height: 56px;
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 28px;
+}
+
+.brand-title {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 2.4rem;
+  margin: 0 0 16px 0;
+}
+
+.brand-subtitle {
+  color: var(--text-muted);
+  max-width: 380px;
+  line-height: 1.5;
+  margin-bottom: 40px;
+}
+
+.brand-features {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-width: 420px;
+}
+
+.brand-features li {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.feature-num {
+  color: var(--gold);
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 700;
+  min-width: 20px;
+}
+
+.brand-features strong {
+  display: block;
+  font-size: 0.95rem;
+  margin-bottom: 2px;
+}
+
+.brand-features p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+/* ---------- Panel derecho (formulario) ---------- */
+.panel-form {
+  flex: 1 1 50%;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+}
+
+.form-box {
+  width: 100%;
+  max-width: 400px;
+}
+
+.form-box h2 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.9rem;
+  margin: 0 0 6px 0;
+}
+
+.form-subtitle {
+  color: var(--text-muted);
+  margin: 0 0 28px 0;
+  font-size: 0.95rem;
+}
+
+.form-box label {
+  display: block;
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin-bottom: 6px;
+  margin-top: 18px;
+}
+
+.form-box input,
+.form-box select {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1px solid var(--border-gray);
+  border-radius: 6px;
+  font-size: 0.95rem;
+  background: #fff;
+  color: var(--text-dark);
+}
+
+.form-box input:focus,
+.form-box select:focus {
+  outline: none;
+  border-color: var(--navy);
+}
+
+.btn-ingresar {
+  width: 100%;
+  margin-top: 26px;
+  padding: 13px;
+  background: var(--navy);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.btn-ingresar:hover {
+  background: var(--navy-soft);
+}
+
+.btn-ingresar:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.register-link {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.register-link a {
+  color: var(--gold);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.register-link a:hover {
+  text-decoration: underline;
+}
+
+.alert-error {
+  background: #fbeaea;
+  border: 1px solid #e6b4b4;
+  color: #9c3b3b;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 0.88rem;
+  margin-bottom: 6px;
+}
+
+.field-error {
+  display: block;
+  color: #c0392b;
+  font-size: 0.8rem;
+  min-height: 16px;
+  margin-top: 6px;
+}
