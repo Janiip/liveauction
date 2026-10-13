@@ -1,9 +1,6 @@
 <?php
-session_start();
-if (!isset($_SESSION['usuario_id']) || $_SESSION['rol'] !== 'administrador') {
-    header('Location: index.php');
-    exit;
-}
+require_once __DIR__ . '/auth.php';
+requireLogin('administrador');
 ?>
 <!DOCTYPE html>
 <html lang="es">

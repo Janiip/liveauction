@@ -2,37 +2,32 @@
 /**
  * LiveAuction - Login (index.php)
  * Valida email + contraseña + rol contra la tabla `usuarios`.
- * Ajustá los datos de conexión a tu XAMPP si hace falta.
  */
-session_start();
+require_once __DIR__ . '/conexion.php';
+require_once __DIR__ . '/auth.php';
 
-// ---------- Conexión a la base de datos ----------
-$DB_HOST = 'localhost';
-$DB_USER = 'root';
-$DB_PASS = '';
-$DB_NAME = 'liveauction';
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 $error = '';
 $email_valor = '';
-$rol_valor   = 'cliente';
+$rol_valor = 'cliente';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
     $rol_seleccionado = $_POST['rol'] ?? '';
 
     $email_valor = htmlspecialchars($email, ENT_QUOTES, 'UTF-8');
-    $rol_valor   = $rol_seleccionado;
+    $rol_valor = $rol_seleccionado;
 
     if ($email === '' || $password === '' || $rol_seleccionado === '') {
         $error = 'Completá todos los campos.';
     } else {
-        $mysqli = @new mysqli($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME);
+        try {
+            $mysqli = getDatabaseConnection();
 
-        if ($mysqli->connect_errno) {
-            $error = 'No se pudo conectar a la base de datos.';
-        } else {
             $stmt = $mysqli->prepare(
                 'SELECT id, nombre, apellido, password, rol, estado
                  FROM usuarios WHERE email = ? LIMIT 1'
@@ -42,7 +37,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $resultado = $stmt->get_result();
             $usuario = $resultado->fetch_assoc();
             $stmt->close();
-            $mysqli->close();
 
             if (!$usuario || !password_verify($password, $usuario['password'])) {
                 $error = 'Email o contraseña incorrectos.';
@@ -51,24 +45,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } elseif ($usuario['rol'] !== $rol_seleccionado) {
                 $error = 'El rol seleccionado no coincide con el de tu cuenta.';
             } else {
-                // Login correcto: se guarda la sesión
                 $_SESSION['usuario_id'] = $usuario['id'];
-                $_SESSION['nombre']     = $usuario['nombre'] . ' ' . $usuario['apellido'];
-                $_SESSION['rol']        = $usuario['rol'];
+                $_SESSION['nombre'] = $usuario['nombre'] . ' ' . $usuario['apellido'];
+                $_SESSION['rol'] = $usuario['rol'];
 
-                switch ($usuario['rol']) {
-                    case 'administrador':
-                        header('Location: admin.php');
-                        break;
-                    case 'moderador':
-                        header('Location: moderador.php');
-                        break;
-                    default:
-                        header('Location: cliente.php');
-                        break;
-                }
-                exit;
+                redirectPorRol($usuario['rol']);
             }
+        } catch (Throwable $e) {
+            $error = 'No se pudo conectar a la base de datos.';
         }
     }
 }
@@ -85,7 +69,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <div class="login-wrapper">
 
-  <!-- Panel izquierdo: branding -->
   <aside class="panel-brand">
     <div class="brand-logo">LA</div>
 
@@ -119,7 +102,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </ul>
   </aside>
 
-  <!-- Panel derecho: formulario -->
   <main class="panel-form">
     <div class="form-box">
       <h2>Ingresar</h2>
