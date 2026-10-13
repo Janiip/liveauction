@@ -1,7 +1,17 @@
 
 <?php
 session_start();
+require_once "auth.php";
 require_once "conexion.php";
+
+// Solo clientes autenticados pueden ver esta página.
+requireLogin('cliente');
+
+try {
+    $conexion = getDatabaseConnection();
+} catch (Throwable $e) {
+    die("No se pudo conectar a la base de datos.");
+}
 
 // Obtener las categorías registradas.
 $categorias = [];
@@ -96,9 +106,12 @@ function dinero($valor) {
         <div class="avatar">
             <?php
             if (isset($_SESSION["nombre"])) {
-                echo e(strtoupper(
-                    substr($_SESSION["nombre"], 0, 2)
-                ));
+                $partes = preg_split('/\s+/', trim($_SESSION["nombre"]));
+                $iniciales = $partes[0][0] ?? '';
+                if (isset($partes[1])) {
+                    $iniciales .= $partes[1][0];
+                }
+                echo e(strtoupper($iniciales));
             } else {
                 echo "JG";
             }
@@ -113,7 +126,7 @@ function dinero($valor) {
 </header>
 
 <nav class="tabs">
-    <a class="tab active" href="index.php">Subastas activas</a>
+    <a class="tab active" href="c_obras_activas.php">Subastas activas</a>
     <a class="tab" href="detalle_subasta.php">Detalle subasta</a>
     <a class="tab" href="mis_pujas.php">Mis pujas</a>
     <a class="tab" href="notificaciones.php">Notificaciones</a>

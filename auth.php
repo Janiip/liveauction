@@ -13,7 +13,7 @@ function redirectPorRol(string $rol): void {
             header('Location: moderador.php');
             break;
         default:
-            header('Location: cliente.php');
+            header('Location: c_obras_activas.php');
             break;
     }
     exit;
