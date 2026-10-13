@@ -1,8 +1,8 @@
-
 <?php
 session_start();
 require_once "auth.php";
 require_once "conexion.php";
+require_once "subastas_lib.php";
 
 // Solo clientes autenticados pueden ver esta página.
 requireLogin('cliente');
@@ -12,6 +12,9 @@ try {
 } catch (Throwable $e) {
     die("No se pudo conectar a la base de datos.");
 }
+
+// Cierra las subastas cuyo tiempo ya terminó.
+cerrarSubastasVencidas($conexion);
 
 // Obtener las categorías registradas.
 $categorias = [];
@@ -84,7 +87,7 @@ function dinero($valor) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LiveAuction - Subastas activas</title>
-    <link rel="stylesheet" href="c_obras_activas.css">
+    <link rel="stylesheet" href="css/c_obras_activas.css">
 </head>
 <body>
 
@@ -220,8 +223,9 @@ function dinero($valor) {
                     <strong><?= dinero($precio) ?></strong>
                 </div>
 
-                <div class="time"
-                     data-countdown="<?= $segundos ?>">
+                <div class="time js-cronometro"
+                     data-id="<?= (int)$subasta['id_subasta'] ?>"
+                     data-segundos="<?= $segundos ?>">
                     --:--
                 </div>
 
@@ -290,40 +294,8 @@ function updateAuctions() {
 search.addEventListener("input", updateAuctions);
 category.addEventListener("change", updateAuctions);
 sort.addEventListener("change", updateAuctions);
-
-// Cuenta regresiva visual.
-document.querySelectorAll("[data-countdown]").forEach(timer => {
-    let segundos = Number(timer.dataset.countdown);
-
-    function actualizar() {
-        if (segundos <= 0) {
-            timer.textContent = "Finalizada";
-            timer.classList.add("urgent");
-            return;
-        }
-
-        const dias = Math.floor(segundos / 86400);
-        const horas = Math.floor((segundos % 86400) / 3600);
-        const minutos = Math.floor((segundos % 3600) / 60);
-        const seg = segundos % 60;
-
-        if (dias > 0) {
-            timer.textContent = `${dias}d ${String(horas).padStart(2, "0")}h`;
-        } else {
-            timer.textContent =
-                `${String(horas).padStart(2, "0")}:` +
-                `${String(minutos).padStart(2, "0")}:` +
-                `${String(seg).padStart(2, "0")}`;
-        }
-
-        if (segundos <= 300) timer.classList.add("urgent");
-        segundos--;
-    }
-
-    actualizar();
-    setInterval(actualizar, 1000);
-});
 </script>
+<script src="js/cronometro.js"></script>
 
 </body>
 </html>

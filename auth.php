@@ -49,3 +49,13 @@ function cerrarSesion(): void {
 
     session_destroy();
 }
+/**
+ * Permite el acceso a varios roles (ej.: moderador y administrador).
+ */
+function requireRoles(array $rolesPermitidos): void {
+    if (!isset($_SESSION['usuario_id'])
+        || !in_array($_SESSION['rol'] ?? '', $rolesPermitidos, true)) {
+        header('Location: index.php');
+        exit;
+    }
+}
