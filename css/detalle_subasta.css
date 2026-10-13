@@ -1,0 +1,296 @@
+/* LiveAuction — detalle_subasta.css
+   Se carga DESPUÉS de c_obras_activas.css (reutiliza topbar, tabs, .page,
+   variables de color y .time / .urgent / .empty-state). */
+
+.back-link {
+    display: inline-block;
+    margin-bottom: 18px;
+    color: var(--muted);
+    font-size: 12px;
+    text-decoration: none;
+}
+
+.back-link:hover {
+    color: var(--navy);
+}
+
+/* Disposición: galería + información */
+.detail {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 32px;
+    padding-bottom: 28px;
+    border-bottom: 1px solid var(--line);
+}
+
+/* Galería */
+.gallery-main {
+    aspect-ratio: 1 / 1;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    border: 1px solid #343b4c;
+    border-radius: 4px;
+    background: #202638;
+    color: var(--gold);
+}
+
+.gallery-main img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+}
+
+.gallery-main .picture-icon {
+    font-size: 64px;
+}
+
+.gallery-thumbs {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    overflow-x: auto;
+}
+
+.thumb {
+    width: 62px;
+    height: 62px;
+    flex: 0 0 auto;
+    padding: 0;
+    overflow: hidden;
+    border: 2px solid transparent;
+    border-radius: 3px;
+    background: #202638;
+    cursor: pointer;
+}
+
+.thumb img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+}
+
+.thumb.active {
+    border-color: var(--gold);
+}
+
+/* Información */
+.category-tag {
+    display: inline-block;
+    padding: 4px 11px;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    background: var(--field);
+    color: #5e687b;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.info h2 {
+    margin: 12px 0 4px;
+    color: #111b30;
+    font: bold 28px/32px Georgia, serif;
+}
+
+.artist {
+    margin: 0 0 14px;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.description {
+    margin: 0 0 20px;
+    color: #3c4658;
+    font-size: 13px;
+    line-height: 20px;
+}
+
+/* Oferta y cronómetro */
+.price-box {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    padding: 16px 18px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--field);
+}
+
+.price-block {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.price-block .label {
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.price {
+    color: #101a2d;
+    font: bold 26px/30px Georgia, serif;
+}
+
+.price-block .time {
+    font-size: 22px;
+    line-height: 30px;
+}
+
+.base-price {
+    margin: 8px 2px 18px;
+    color: var(--muted);
+    font-size: 11px;
+}
+
+/* Formulario de puja */
+.bid-form label {
+    display: block;
+    margin-bottom: 6px;
+    color: #283248;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.bid-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.currency {
+    color: #394355;
+    font: bold 18px Georgia, serif;
+}
+
+.bid-row input {
+    flex: 1;
+    min-width: 0;
+    height: 40px;
+    padding: 0 15px;
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    outline: none;
+    background: #fff;
+    color: var(--text);
+    font-size: 14px;
+}
+
+.bid-row input:focus {
+    border-color: var(--navy);
+}
+
+.bid-button {
+    height: 40px;
+    padding: 0 26px;
+    border: 0;
+    border-radius: 22px;
+    background: var(--navy);
+    color: #fff;
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.bid-button:hover {
+    background: #2b3550;
+}
+
+.bid-help {
+    margin: 8px 2px 0;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 15px;
+}
+
+/* Historial de pujas */
+.history {
+    padding-top: 24px;
+}
+
+.history h3 {
+    margin: 0 0 8px;
+    color: #202b42;
+    font: bold 18px/22px Georgia, serif;
+}
+
+.history-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 120px 80px;
+    align-items: center;
+    column-gap: 14px;
+    padding: 13px 4px;
+    border-bottom: 1px solid var(--line);
+    color: #3c4658;
+    font-size: 13px;
+}
+
+.history-row.leader {
+    background: #faf5e8;
+}
+
+.bid-amount {
+    color: #101a2d;
+    font: bold 14px Georgia, serif;
+    text-align: right;
+}
+
+.bid-date {
+    color: var(--muted);
+    font-size: 12px;
+    text-align: right;
+}
+
+.badge {
+    margin-left: 8px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: #f0e3c3;
+    color: #7e6328;
+    font-size: 10px;
+    font-style: normal;
+    font-weight: bold;
+}
+
+/* Tablet y celular */
+@media (max-width: 760px) {
+    .detail {
+        grid-template-columns: 1fr;
+        gap: 22px;
+    }
+
+    .info h2 {
+        font-size: 23px;
+        line-height: 27px;
+    }
+
+    .price {
+        font-size: 22px;
+    }
+}
+
+@media (max-width: 430px) {
+    .price-box {
+        padding: 12px;
+    }
+
+    .bid-button {
+        padding: 0 18px;
+    }
+
+    .history-row {
+        grid-template-columns: minmax(0, 1fr) 90px;
+    }
+
+    .bid-date {
+        grid-column: 1;
+        text-align: left;
+    }
+
+    .bid-amount {
+        grid-column: 2;
+        grid-row: 1;
+    }
+}
