@@ -23,10 +23,42 @@ if ($idSubasta <= 0) {
     exit;
 }
 
+// Token CSRF simple
+if (empty($_SESSION['csrf'])) {
+    $_SESSION['csrf'] = bin2hex(random_bytes(16));
+}
+
+// --- Envío de una puja (patrón POST -> redirect -> GET) ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!hash_equals($_SESSION['csrf'], $_POST['csrf'] ?? '')) {
+        $_SESSION['flash'] = ['error', 'Solicitud inválida. Recargá la página.'];
+    } else {
+        $montoIngresado = str_replace(',', '.', trim((string)($_POST['monto'] ?? '')));
+        if (!is_numeric($montoIngresado)) {
+            $_SESSION['flash'] = ['error', 'Ingresá un monto válido.'];
+        } else {
+            [$okPuja, $msgPuja] = registrarPuja(
+                $conexion,
+                $idSubasta,
+                (int)$_SESSION['usuario_id'],
+                (float)$montoIngresado
+            );
+            $_SESSION['flash'] = [$okPuja ? 'ok' : 'error', $msgPuja];
+        }
+    }
+    header('Location: detalle_subasta.php?id=' . $idSubasta);
+    exit;
+}
+
+// Mensaje de la última acción (si hubo)
+$flash = $_SESSION['flash'] ?? null;
+unset($_SESSION['flash']);
+
 // Datos de la subasta y de la obra (o.* trae también la descripción).
 $stmt = $conexion->prepare("
     SELECT s.id_subasta,
            s.precio_actual,
+           s.id_mejor_postor,
            s.tiempo_extension,
            o.*,
            c.nombre AS categoria,
@@ -71,6 +103,11 @@ $precio = $subasta['precio_actual'];
 if ($precio === null) {
     $precio = $subasta['precio_base'];
 }
+$minimo      = montoMinimoPuja($subasta['precio_actual'], $subasta['precio_base']);
+$sinPujas    = $subasta['precio_actual'] === null;
+$soyLider    = $subasta['id_mejor_postor'] !== null
+               && (int)$subasta['id_mejor_postor'] === (int)$_SESSION['usuario_id'];
+$historial   = obtenerHistorialPujas($conexion, $idSubasta);
 $segundos    = (int)$subasta['segundos_restantes'];
 $descripcion = trim((string)($subasta['descripcion'] ?? ''));
 
@@ -90,6 +127,13 @@ function dinero($valor) {
     <title>LiveAuction - <?= e($subasta['titulo']) ?></title>
     <link rel="stylesheet" href="css/c_obras_activas.css">
     <link rel="stylesheet" href="css/detalle_subasta.css">
+    <style>
+        .flash { padding: 11px 14px; border-radius: 6px; margin-bottom: 14px; font-size: 13px; }
+        .flash-ok { background: #e6f3e8; color: #1f5d2b; border: 1px solid #b7dcbe; }
+        .flash-error { background: #fbeaea; color: #b93c2d; border: 1px solid #efc2c0; }
+        .bid-leader { background: #f3ecd9; color: #7a5a14; border: 1px solid #e3d3a6; }
+        .bid-button:disabled, .bid-row input:disabled { opacity: .55; cursor: not-allowed; }
+    </style>
 </head>
 <body>
 
@@ -195,19 +239,32 @@ function dinero($valor) {
                 Precio base: <?= dinero($subasta['precio_base']) ?>
             </p>
 
-            <!-- TODO (tarea "Formulario de puja"): agregar action, método POST,
-                 validación del monto mínimo y envío real de la puja. -->
-            <form class="bid-form" onsubmit="return false;">
+            <?php if ($flash): ?>
+                <div class="flash <?= $flash[0] === 'ok' ? 'flash-ok' : 'flash-error' ?>">
+                    <?= e($flash[1]) ?>
+                </div>
+            <?php endif; ?>
+
+            <?php if ($soyLider): ?>
+                <div class="flash bid-leader">Sos el mejor postor. Si alguien te supera, vas a poder pujar de nuevo.</div>
+            <?php endif; ?>
+
+            <form class="bid-form" id="bid-form" method="POST"
+                  action="detalle_subasta.php?id=<?= (int)$subasta['id_subasta'] ?>">
+                <input type="hidden" name="csrf" value="<?= e($_SESSION['csrf']) ?>">
                 <label for="monto">Tu puja</label>
                 <div class="bid-row">
                     <span class="currency">$</span>
                     <input type="number" id="monto" name="monto"
-                           min="<?= (int)$precio + 1 ?>" step="1"
-                           placeholder="<?= (int)$precio + 1 ?>">
-                    <button type="button" class="bid-button">Pujar</button>
+                           min="<?= (int)ceil($minimo) ?>" step="1" required
+                           placeholder="<?= (int)ceil($minimo) ?>"
+                           <?= $soyLider ? 'disabled' : '' ?>>
+                    <button type="submit" class="bid-button" <?= $soyLider ? 'disabled' : '' ?>>Pujar</button>
                 </div>
+                <p class="bid-help" id="bid-error" style="color:#b93c2d" hidden></p>
                 <p class="bid-help">
-                    Ingresá un monto mayor a la oferta actual.
+                    Monto mínimo: <strong><?= dinero($minimo) ?></strong>
+                    <?= $sinPujas ? '(precio base: todavía no hay pujas)' : '(oferta actual + $1)' ?>.
                     Si pujás en los últimos <?= (int)$subasta['tiempo_extension'] ?> segundos,
                     el cronómetro se extiende.
                 </p>
@@ -219,28 +276,27 @@ function dinero($valor) {
     <section class="history">
         <h3>Historial de pujas</h3>
 
-        <!-- TODO (tarea "Detalle de subasta con historial de pujas"):
-             reemplazar las filas de ejemplo por las pujas de la base de datos.
-             Mantener la estructura de .history-row (la primera lleva .leader). -->
-        <div class="history-list">
-            <div class="history-row leader">
-                <span class="bidder">Cliente A <em class="badge">Mejor oferta</em></span>
-                <span class="bid-amount"><?= dinero($precio) ?></span>
-                <span class="bid-date">14:32:10</span>
+        <?php if (count($historial) === 0): ?>
+            <p class="empty-state">Todavía no hay pujas. ¡Sé el primero!</p>
+        <?php else: ?>
+            <div class="history-list">
+                <?php foreach ($historial as $i => $p):
+                    $esMia = (int)$p['id_cliente'] === (int)$_SESSION['usuario_id'];
+                    // Se muestra nombre + inicial del apellido (privacidad)
+                    $inicial = mb_substr(trim($p['apellido']), 0, 1, 'UTF-8');
+                    $nombrePuja = $p['nombre'] . ($inicial !== '' ? ' ' . $inicial . '.' : '');
+                ?>
+                    <div class="history-row<?= $i === 0 ? ' leader' : '' ?>">
+                        <span class="bidder">
+                            <?= e($nombrePuja) ?><?= $esMia ? ' (vos)' : '' ?>
+                            <?php if ($i === 0): ?><em class="badge">Mejor oferta</em><?php endif; ?>
+                        </span>
+                        <span class="bid-amount"><?= dinero($p['monto']) ?></span>
+                        <span class="bid-date"><?= e($p['hora']) ?></span>
+                    </div>
+                <?php endforeach; ?>
             </div>
-            <div class="history-row">
-                <span class="bidder">Cliente B</span>
-                <span class="bid-amount"><?= dinero($precio * 0.95) ?></span>
-                <span class="bid-date">14:30:41</span>
-            </div>
-            <div class="history-row">
-                <span class="bidder">Cliente C</span>
-                <span class="bid-amount"><?= dinero($precio * 0.9) ?></span>
-                <span class="bid-date">14:27:05</span>
-            </div>
-        </div>
-
-        <p class="empty-state" hidden>Todavía no hay pujas. ¡Sé el primero!</p>
+        <?php endif; ?>
     </section>
 </main>
 
@@ -254,6 +310,27 @@ document.querySelectorAll(".thumb").forEach(thumb => {
             .forEach(t => t.classList.remove("active"));
         thumb.classList.add("active");
     });
+});
+</script>
+<script>
+// Validación del monto mínimo antes de enviar (el servidor vuelve a validar).
+const bidForm = document.getElementById("bid-form");
+const bidError = document.getElementById("bid-error");
+const MONTO_MINIMO = <?= (int)ceil($minimo) ?>;
+bidForm.addEventListener("submit", e => {
+    const monto = parseFloat(document.getElementById("monto").value);
+    if (isNaN(monto) || monto < MONTO_MINIMO) {
+        e.preventDefault();
+        bidError.textContent = "El monto mínimo es $" + MONTO_MINIMO.toLocaleString("es-AR") + ".";
+        bidError.hidden = false;
+        return;
+    }
+    bidForm.querySelector(".bid-button").disabled = true; // evita doble envío
+});
+
+// Cuando el cronómetro llega a 0, recargar (la subasta pasa a cerrada).
+document.addEventListener("cronometro:fin", () => {
+    setTimeout(() => location.reload(), 1500);
 });
 </script>
 <script src="js/cronometro.js"></script>

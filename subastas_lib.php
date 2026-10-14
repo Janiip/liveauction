@@ -229,3 +229,121 @@ function obtenerTiempoSubasta(mysqli $db, int $idSubasta): ?array {
     $stmt->close();
     return $fila ?: null;
 }
+
+
+/**
+ * REGISTRAR PUJA (RF08, RF09, RF11, RF12, RF14).
+ *
+ * Reglas:
+ *  - La subasta debe estar 'activa' y no haber vencido.
+ *  - El usuario debe ser cliente activo (no suspendido).
+ *  - Monto mínimo: sin pujas previas = precio base; con pujas = oferta actual + 1.
+ *  - No se puede pujar si ya sos el mejor postor.
+ *  - Todo ocurre en una transacción con la fila de la subasta bloqueada
+ *    (FOR UPDATE), así dos pujas simultáneas no se pisan.
+ *  - Si la puja entra en los últimos segundos, se extiende el cronómetro.
+ *
+ * Devuelve [ok(bool), mensaje(string), extendida(bool)].
+ */
+function registrarPuja(mysqli $db, int $idSubasta, int $idCliente, float $monto): array {
+    $monto = round($monto, 2);
+    if ($monto <= 0 || $monto > 9999999999.99) {
+        return [false, 'Ingresá un monto válido.', false];
+    }
+
+    $db->begin_transaction();
+    try {
+        // Usuario habilitado para pujar
+        $stmt = $db->prepare("SELECT rol, estado FROM usuarios WHERE id = ?");
+        $stmt->bind_param('i', $idCliente);
+        $stmt->execute();
+        $usuario = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if (!$usuario || $usuario['rol'] !== 'cliente' || $usuario['estado'] !== 'activo') {
+            $db->rollback();
+            return [false, 'Tu usuario no está habilitado para pujar.', false];
+        }
+
+        // Bloquea la subasta mientras se procesa la puja
+        $stmt = $db->prepare("SELECT s.estado, s.precio_actual, s.id_mejor_postor,
+                                     (s.fecha_fin > NOW()) AS vigente, o.precio_base
+                              FROM subastas s
+                              INNER JOIN obras o ON o.id_obra = s.id_obra
+                              WHERE s.id_subasta = ? FOR UPDATE");
+        $stmt->bind_param('i', $idSubasta);
+        $stmt->execute();
+        $sub = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if (!$sub || $sub['estado'] !== 'activa' || !(int)$sub['vigente']) {
+            $db->rollback();
+            return [false, 'La subasta ya no está activa.', false];
+        }
+
+        if ($sub['id_mejor_postor'] !== null && (int)$sub['id_mejor_postor'] === $idCliente) {
+            $db->rollback();
+            return [false, 'Ya sos el mejor postor de esta subasta.', false];
+        }
+
+        $minimo = montoMinimoPuja($sub['precio_actual'], $sub['precio_base']);
+        if ($monto < $minimo) {
+            $db->rollback();
+            return [false, 'Tu puja debe ser de al menos $' . number_format($minimo, 0, ',', '.') . '.', false];
+        }
+
+        $stmt = $db->prepare("INSERT INTO pujas (id_subasta, id_cliente, monto, es_ganadora, fecha_hora)
+                              VALUES (?, ?, ?, 0, NOW())");
+        $stmt->bind_param('iid', $idSubasta, $idCliente, $monto);
+        $stmt->execute();
+        $stmt->close();
+
+        $stmt = $db->prepare("UPDATE subastas SET precio_actual = ?, id_mejor_postor = ?
+                              WHERE id_subasta = ?");
+        $stmt->bind_param('dii', $monto, $idCliente, $idSubasta);
+        $stmt->execute();
+        $stmt->close();
+
+        $extendida = extenderCronometroSiCorresponde($db, $idSubasta);
+
+        $db->commit();
+        $msg = '¡Puja registrada! Sos el mejor postor.';
+        if ($extendida) {
+            $msg .= ' Se extendió el tiempo de la subasta.';
+        }
+        return [true, $msg, $extendida];
+    } catch (Throwable $e) {
+        $db->rollback();
+        return [false, 'No se pudo registrar la puja. Intentá de nuevo.', false];
+    }
+}
+
+/**
+ * Monto mínimo aceptado: precio base si todavía no hay pujas,
+ * o la oferta actual + 1 si ya las hay.
+ */
+function montoMinimoPuja($precioActual, $precioBase): float {
+    if ($precioActual === null) {
+        return (float)$precioBase;
+    }
+    return (float)$precioActual + 1;
+}
+
+/**
+ * Historial de pujas de una subasta (la mejor oferta primero).
+ */
+function obtenerHistorialPujas(mysqli $db, int $idSubasta, int $limite = 50): array {
+    $stmt = $db->prepare("SELECT p.id_puja, p.id_cliente, p.monto,
+                                 DATE_FORMAT(p.fecha_hora, '%H:%i:%s') AS hora,
+                                 u.nombre, u.apellido
+                          FROM pujas p
+                          INNER JOIN usuarios u ON u.id = p.id_cliente
+                          WHERE p.id_subasta = ?
+                          ORDER BY p.monto DESC, p.id_puja DESC
+                          LIMIT ?");
+    $stmt->bind_param('ii', $idSubasta, $limite);
+    $stmt->execute();
+    $filas = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+    return $filas;
+}
